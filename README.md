@@ -307,7 +307,63 @@ pm.test("Status 500: Серверная ошибка", function() {
     pm.expect(response.code).to.equal(500);
 });
 
+## Версия 2 API
 
+### 1. Удаление объявления (DELETE /api/2/item/{{itemID}})
 
+- **Тест 5.1**: Успешное удаление существующего объявления.
+  - Ожидаемый результат: HTTP 200.
+  - 
+ pm.test("Удаление существующего объявления - статус 200", function() {
+    pm.response.to.have.status(200);
+});
 
+- **Тест 5.2**: Попытка удаления несуществующего `id`.
+  - Ожидаемый результат: HTTP 404.
+ 
+  pm.test("Должен вернуть статус 404", function () {
+    pm.response.to.have.status(404);
+});
+ 
+- **Тест 5.3**: Невалидный формат `id`.
+  - Ожидаемый результат: HTTP 400.
 
+pm.test("Невалидный ID 400", function () {
+    pm.response.to.have.status(400);
+});
+
+### 2. Получение статистики (GET /api/2/statistic/{{itemID}})
+
+- **Тест 6.1**: Успешный запрос для существующего `id`.
+  - Ожидаемый результат: HTTP 200, данные статистики.
+ 
+  // Проверка статуса
+pm.test("Status 200: OK", () => pm.response.to.have.status(200));
+
+// Проверка структуры ответа
+pm.test("Тело ответа содержит массив с данными", () => {
+    const response = pm.response.json();
+    pm.expect(response).to.be.an("array");
+    pm.expect(response).to.have.lengthOf(1);
+});
+
+// Проверка полей статистики
+pm.test("Проверка значений статистики", () => {
+    const stats = pm.response.json()[0];
+    
+    pm.expect(stats).to.deep.include({
+        contacts: 10,
+        likes: 5,
+        viewCount: 5
+    });
+    
+    pm.expect(stats.contacts).to.be.a("number");
+    pm.expect(stats.likes).to.be.a("number");
+    pm.expect(stats.viewCount).to.be.a("number");
+});
+
+- **Тест 6.2**: Запрос несуществующего `id`.
+  - Ожидаемый результат: HTTP 404.
+ 
+// Проверка статуса
+pm.test("Status 404: Not Found", () => pm.response.to.have.status(404));
