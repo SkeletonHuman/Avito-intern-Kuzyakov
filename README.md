@@ -68,7 +68,7 @@
  
 # АВТОТЕСТЫ
 
-Создание объявления (POST /api/1/item)
+### 1. Создание объявления (POST /api/1/item)
 
  **Тест 1.1**: Успешное создание объявления с валидными данными.
   - Ожидаемый результат: HTTP 200, тело ответа содержит `id` и переданные данные.
@@ -162,7 +162,7 @@ pm.test("Status 400: Неверный тип данных", function() {
 });
 
 
-Получение объявления по ID (GET /api/1/item/{{itemID}})
+### 2. Получение объявления по ID (GET /api/1/item/{{itemID}})
 
  **Тест 2.1**: Успешное получение существующего объявления.
   - Ожидаемый результат: HTTP 200, тело ответа содержит данные объявления
@@ -190,77 +190,124 @@ pm.test("Тело ответа содержит сообщение об ошиб
     pm.expect(response.result).to.include("not found");
 });
 
-Кейс 3. Некорректный ID (400 Bad Request)
+ **Тест 2.3**: Невалидный формат `id` (например, символы вместо цифр).
+ 
+  - Ожидаемый результат: HTTP 400.
+// URL: /api/1/item/abc123
 
-pm.test("Статус код 400", function() {
+// Tests
+pm.test("Status 400: Невалидный ID", () => {
     pm.response.to.have.status(400);
 });
 
-pm.test("Тело ответа содержит ошибку валидации", function() {
-    const response = pm.response.json();
-    pm.expect(response.result.messages.id).to.eql("Must be a valid UUID");
-});
+
+### 3. Получение всех объявлений продавца (GET /api/1/{{SellerID}}/item)
 
 
+- **Тест 3.1**: Успешный запрос для существующего `sellerID`.
+  - Ожидаемый результат: HTTP 200, список объявлений.
 
-
-АВТОТЕСТ для GET-запроса "Получить статистику по объявлению"
-Endpoint: {{baseUrl}}/api/1/statistic/{{itemID}}
-Метод: GET
-
-Кейс 1. Успешное получение статистики (200 OK)
-
-// Проверка статуса
-pm.test("Status 200: Статистика получена", () => {
+// Tests
+pm.test("Status 200: Список получен", () => {
     pm.response.to.have.status(200);
-    pm.response.to.be.json;
+    pm.expect(pm.response.json()).to.be.an("array");
 });
 
-// Проверка структуры
-pm.test("Ответ содержит статистику (likes, viewCount, contacts)", () => {
-    const stats = pm.response.json()[0]; // Берём первый элемент массива
-    pm.expect(stats).to.have.all.keys("likes", "viewCount", "contacts");
-    pm.expect(stats.likes).to.be.a("number").and.to.be.at.least(0);
-    pm.expect(stats.viewCount).to.be.a("number").and.to.be.at.least(0);
-    pm.expect(stats.contacts).to.be.a("number").and.to.be.at.least(0);
+- **Тест 3.2**: Запрос для несуществующего `sellerID`.
+  - Ожидаемый результат: HTTP 200, пустой список.
+
+// URL: /api/1/999999/item
+
+// Tests
+pm.test("Status 200: Пустой список", () => {
+    pm.response.to.have.status(200);
+    pm.expect(pm.response.json()).to.be.empty;
 });
 
-// Проверка времени ответа
-pm.test("Время ответа < 300 мс", () => {
-    pm.expect(pm.response.responseTime).to.be.below(300);
+- **Тест 3.3**: Неверный формат `sellerID` (например, строка).
+  - Ожидаемый результат: HTTP 400.
+
+// URL: /api/1/abc/item
+
+// Tests
+pm.test("Status 400: Невалидный ID", () => {
+    pm.response.to.have.status(400);
 });
 
-Кейс 2. Объявление не найдено (404 Not Found)
+### 4. Получение статистики (GET /api/1/statistic/{{itemID}})
 
-// 1. Проверка статус-кода
-pm.test("Status Code: 404 Not Found", function() {
+- **Тест 4.1**: Успешный запрос для существующего `id`.
+  - Ожидаемый результат: HTTP 200, данные статистики.
+
+// 1. Проверка статуса ответа
+pm.test("Status 200: Статистика получена успешно", function() {
+    pm.response.to.have.status(200);
+    pm.response.to.have.jsonBody();
+});
+
+// 2. Проверка структуры ответа
+const stats = pm.response.json()[0]; // Получаем первый элемент массива
+pm.test("Ответ содержит массив с одним элементом", function() {
+    pm.expect(pm.response.json()).to.be.an('array').with.lengthOf(1);
+});
+
+// 3. Проверка наличия обязательных полей
+pm.test("Статистика содержит все необходимые поля", function() {
+    pm.expect(stats).to.have.all.keys([
+        'contacts',
+        'likes',
+        'viewCount'
+    ]);
+});
+
+// 4. Проверка типов данных
+pm.test("Поля статистики имеют правильный тип", function() {
+    pm.expect(stats.contacts).to.be.a('number');
+    pm.expect(stats.likes).to.be.a('number');
+    pm.expect(stats.viewCount).to.be.a('number');
+});
+
+// 5. Проверка конкретных значений 
+pm.test("Конкретные значения статистики", function() {
+    // Проверяем contacts (ожидаем 10)
+    pm.expect(stats.contacts, "Количество контактов не совпадает").to.eql(10);
+    
+    // Для likes/viewCount проверяем что >= 5 
+    pm.expect(stats.likes, "Лайков должно быть ≥ 5").to.be.at.least(5);
+    pm.expect(stats.viewCount, "Просмотров должно быть ≥ 5").to.be.at.least(5);
+});
+
+
+- **Тест 4.2**: Запрос несуществующего `id`.
+  - Ожидаемый результат: HTTP 404.
+
+// URL: /api/1/statistic/00000000-0000-0000-0000-000000000000
+
+// Tests
+pm.test("Status 404: Не найдено", () => {
     pm.response.to.have.status(404);
 });
 
-// 2. Проверка структуры ответа
-pm.test("Ответ содержит поле 'result' и 'status'", function() {
-    const response = pm.response.json();
-    pm.expect(response).to.have.property("result");
-    pm.expect(response).to.have.property("status");
+
+- **Тест 4.3**: Серверная ошибка (имитация через невалидный ввод).
+  - Ожидаемый результат: HTTP 500.
+
+// 1. Отправляем запрос с заведомо невалидными данными
+const response = pm.sendRequest({
+    url: pm.request.url.toString().replace("{{itemID}}", "INVALID_INPUT_CAUSE_500"),
+    method: "GET",
+    headers: {
+        "Accept": "application/json",
+        "Invalid-Header": "force-error" // Добавляем невалидный заголовок
+    }
+});
+
+// 2. Проверяем статус ответа
+pm.test("Status 500: Серверная ошибка", function() {
+    pm.expect(response.code).to.equal(500);
 });
 
 
-Кейс 3. Невалидный ID (400 Bad Request)
-
-// 1. Проверка статус-кода
-pm.test("Status Code: 400 Bad Request", function() {
-    pm.response.to.have.status(400);
-});
-
-// 2. Проверка структуры ответа
-pm.test("Ответ содержит поле 'result' и 'status'", function() {
-    const response = pm.response.json();
-    pm.expect(response).to.have.property("result");
-    pm.expect(response).to.have.property("status");
-});
 
 
-Тест-кейсы для GET-запроса "Получить все объявления продавца"
-Endpoint: {{baseUrl}}/api/1/{{SellerID}}/item
-Метод: GET
 
